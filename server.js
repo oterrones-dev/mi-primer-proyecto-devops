@@ -1,34 +1,61 @@
 const express = require('express');
-const fs = require('fs');
 const path = require('path');
+const { createClient } = require('redis');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const COUNTER_FILE = path.join(__dirname, 'counter.txt');
 
-let visits = 0;
+const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 
-// Cargar contador existente si ya existe el archivo
-if (fs.existsSync(COUNTER_FILE)) {
-  const saved = fs.readFileSync(COUNTER_FILE, 'utf8');
-  visits = parseInt(saved, 10) || 0;
+const client = createClient({
+  url: REDIS_URL
+});
+
+client.on('error', (err) => {
+  console.error('Redis error:', err);
+});
+
+async function startServer() {
+  await client.connect();
+
+  app.use(express.static(path.join(__dirname, 'public')));
+
+  app.get('/api/visits', async (req, res) => {
+    const visits = await client.incr('visits');
+    res.json({ visits });
+  });
+
+  app.get('/health', async (req, res) => {
+    let redisStatus = 'unknown';
+
+    try {
+      await client.ping();
+      redisStatus = 'ok';
+    } catch (error) {
+      redisStatus = 'error';
+    }
+
+    res.json({
+      status: 'ok',
+      redis: redisStatus
+    });
+  });
+
+  app.get('/version', (req, res) => {
+    res.json({
+      app: 'mi-primer-proyecto-devops',
+      version: '2.0.0',
+      storage: 'redis'
+    });
+  });
+
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Connected to Redis at ${REDIS_URL}`);
+  });
 }
 
-// Servir frontend desde /public
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Endpoint del contador
-app.get('/api/visits', (req, res) => {
-  visits += 1;
-  fs.writeFileSync(COUNTER_FILE, String(visits));
-  res.json({ visits });
-});
-
-// Endpoint health
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+startServer().catch((err) => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
 });
