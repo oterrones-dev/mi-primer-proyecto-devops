@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Oscar DevOps Lab</title>
+
   <style>
     * {
       box-sizing: border-box;
@@ -21,21 +22,31 @@
     header {
       padding: 60px 20px;
       text-align: center;
-      background: rgba(255, 255, 255, 0.03);
-      border-bottom: 1px solid rgba(255,255,255,0.08);
     }
 
-    header h1 {
+    h1 {
       font-size: 3rem;
-      margin-bottom: 10px;
       color: #38bdf8;
     }
 
-    header p {
-      font-size: 1.2rem;
-      color: #cbd5e1;
-      max-width: 700px;
-      margin: 0 auto;
+    .badge {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-weight: bold;
+      background: #22c55e;
+      color: #0f172a;
+    }
+
+    .visit-badge {
+      display: inline-block;
+      margin: 10px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: #38bdf8;
+      color: #0f172a;
+      font-weight: bold;
     }
 
     .container {
@@ -46,169 +57,89 @@
 
     .section-title {
       font-size: 2rem;
-      margin-bottom: 20px;
-      color: #facc15;
       text-align: center;
+      color: #facc15;
+      margin-bottom: 20px;
     }
 
     .cards {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 20px;
-      margin-top: 20px;
     }
 
     .card {
       background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 16px;
-      padding: 24px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .card:hover {
-      transform: translateY(-6px);
-      box-shadow: 0 14px 30px rgba(0,0,0,0.3);
-    }
-
-    .card h3 {
-      margin-bottom: 10px;
-      color: #38bdf8;
-    }
-
-    .highlight {
-      color: #4ade80;
-      font-weight: bold;
-    }
-
-    .status {
-      margin-top: 30px;
       padding: 20px;
-      background: rgba(74, 222, 128, 0.08);
-      border: 1px solid rgba(74, 222, 128, 0.35);
-      border-radius: 14px;
-      text-align: center;
-    }
-
-    .status p {
-      font-size: 1.1rem;
+      border-radius: 12px;
     }
 
     footer {
       text-align: center;
-      padding: 25px;
       margin-top: 40px;
+      padding: 20px;
       color: #94a3b8;
-      border-top: 1px solid rgba(255,255,255,0.08);
-    }
-
-    .badge {
-      display: inline-block;
-      margin-top: 15px;
-      background: #22c55e;
-      color: #0f172a;
-      padding: 8px 14px;
-      border-radius: 999px;
-      font-weight: bold;
-    }
-
-    .visit-badge {
-      display: inline-block;
-      margin-top: 15px;
-      margin-left: 10px;
-      background: #38bdf8;
-      color: #0f172a;
-      padding: 8px 14px;
-      border-radius: 999px;
-      font-weight: bold;
-    }
-
-    @media (max-width: 600px) {
-      .visit-badge {
-        display: block;
-        margin: 12px auto 0;
-        width: fit-content;
-      }
     }
   </style>
 </head>
+
 <body>
-  <header>
-    <h1>Oscar DevOps Lab 🚀</h1>
-    <p>
-      Proyecto práctico desplegado con <span class="highlight">Docker</span>,
-      versionado con <span class="highlight">Git</span> y automatizado con
-      <span class="highlight">GitHub Actions</span>.
-    </p>
-    <div class="badge">Pipeline Activo ✅</div>
-    <div class="visit-badge">Tus visitas: <span id="user-counter">Cargando...</span></div>
-    <div class="visit-badge">Visitas globales: <span id="total-counter">Cargando...</span></div>
-  </header>
 
-  <main class="container">
-    <section>
-      <h2 class="section-title">Tecnologías usadas</h2>
-      <div class="cards">
-        <div class="card">
-          <h3>Linux</h3>
-          <p>Entorno Ubuntu montado en máquina virtual para practicar como en un laboratorio real.</p>
-        </div>
-        <div class="card">
-          <h3>Docker</h3>
-          <p>Contenerización de la aplicación usando una imagen personalizada y desplegable.</p>
-        </div>
-        <div class="card">
-          <h3>Git & GitHub</h3>
-          <p>Control de versiones, commits, push remoto y repositorio público profesional.</p>
-        </div>
-        <div class="card">
-          <h3>CI/CD</h3>
-          <p>Pipeline automático que construye la imagen y la publica tras cambios en la rama principal.</p>
-        </div>
-      </div>
-    </section>
+<header>
+  <h1>Oscar DevOps Lab 🚀</h1>
 
-    <section style="margin-top: 50px;">
-      <h2 class="section-title">Estado del proyecto</h2>
-      <div class="status">
-        <p><strong>Aplicación web:</strong> desplegada en Render y corriendo en la nube</p>
-        <p><strong>Repositorio:</strong> publicado en GitHub</p>
-        <p><strong>Automatización:</strong> pipeline en verde</p>
-        <p><strong>Imagen:</strong> publicada en Docker Hub</p>
-      </div>
-    </section>
+  <p>
+    Proyecto desplegado con Docker, Git y GitHub Actions
+  </p>
 
-    <section style="margin-top: 50px;">
-      <h2 class="section-title">Objetivo</h2>
-      <div class="card">
-        <p>
-          Este proyecto fue creado como parte de una ruta práctica de aprendizaje en DevOps
-          para demostrar un flujo completo:
-          <span class="highlight">desarrollo → versionado → contenedor → automatización → despliegue</span>.
-        </p>
-      </div>
-    </section>
-  </main>
+  <div class="badge">Pipeline Activo ✅</div>
 
-  <footer>
-    Hecho por Oscar Terrones | Mi primer laboratorio DevOps
-  </footer>
+  <div class="visit-badge">
+    Tus visitas: <span id="user-counter">Cargando...</span>
+  </div>
 
-  <script>
-   <script>
+  <div class="visit-badge">
+    Visitas globales: <span id="total-counter">Cargando...</span>
+  </div>
+
+  <div class="visit-badge">
+    Tu IP: <span id="user-ip">Detectando...</span>
+  </div>
+
+</header>
+
+<main class="container">
+
+  <h2 class="section-title">Tecnologías usadas</h2>
+
+  <div class="cards">
+    <div class="card">Linux</div>
+    <div class="card">Docker</div>
+    <div class="card">Git & GitHub</div>
+    <div class="card">CI/CD</div>
+  </div>
+
+</main>
+
+<footer>
+  Hecho por Oscar Terrones 💻
+</footer>
+
+<!-- 🔥 SCRIPT (MISMO ARCHIVO) -->
+<script>
   fetch('/api/visits')
     .then(res => res.json())
     .then(data => {
       document.getElementById('user-counter').innerText = data.userVisits;
       document.getElementById('total-counter').innerText = data.totalVisits;
-      console.log('IP detectada:', data.ip);
+      document.getElementById('user-ip').innerText = data.ip;
     })
     .catch(() => {
       document.getElementById('user-counter').innerText = 'N/D';
       document.getElementById('total-counter').innerText = 'N/D';
+      document.getElementById('user-ip').innerText = 'N/D';
     });
 </script>
-  </script>
+
 </body>
 </html>
