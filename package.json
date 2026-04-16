@@ -1,0 +1,12 @@
+{
+  "name": "mi-primer-proyecto-devops",
+  "version": "1.0.0",
+  "description": "App DevOps con contador de visitas",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

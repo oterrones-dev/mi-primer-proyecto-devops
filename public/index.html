@@ -112,6 +112,25 @@
       border-radius: 999px;
       font-weight: bold;
     }
+
+    .visit-badge {
+      display: inline-block;
+      margin-top: 15px;
+      margin-left: 10px;
+      background: #38bdf8;
+      color: #0f172a;
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-weight: bold;
+    }
+
+    @media (max-width: 600px) {
+      .visit-badge {
+        display: block;
+        margin: 12px auto 0;
+        width: fit-content;
+      }
+    }
   </style>
 </head>
 <body>
@@ -123,6 +142,7 @@
       <span class="highlight">GitHub Actions</span>.
     </p>
     <div class="badge">Pipeline Activo ✅</div>
+    <div class="visit-badge">Visitas: <span id="counter">Cargando...</span></div>
   </header>
 
   <main class="container">
@@ -135,7 +155,7 @@
         </div>
         <div class="card">
           <h3>Docker</h3>
-          <p>Contenerización de la aplicación usando una imagen basada en Nginx.</p>
+          <p>Contenerización de la aplicación usando una imagen personalizada y desplegable.</p>
         </div>
         <div class="card">
           <h3>Git & GitHub</h3>
@@ -143,7 +163,7 @@
         </div>
         <div class="card">
           <h3>CI/CD</h3>
-          <p>Pipeline automático que construye la imagen cuando hay cambios en la rama principal.</p>
+          <p>Pipeline automático que construye la imagen y la publica tras cambios en la rama principal.</p>
         </div>
       </div>
     </section>
@@ -151,9 +171,10 @@
     <section style="margin-top: 50px;">
       <h2 class="section-title">Estado del proyecto</h2>
       <div class="status">
-        <p><strong>Aplicación web:</strong> corriendo en contenedor Docker</p>
+        <p><strong>Aplicación web:</strong> desplegada en Render y corriendo en la nube</p>
         <p><strong>Repositorio:</strong> publicado en GitHub</p>
         <p><strong>Automatización:</strong> pipeline en verde</p>
+        <p><strong>Imagen:</strong> publicada en Docker Hub</p>
       </div>
     </section>
 
@@ -163,7 +184,7 @@
         <p>
           Este proyecto fue creado como parte de una ruta práctica de aprendizaje en DevOps
           para demostrar un flujo completo:
-          <span class="highlight">desarrollo → versionado → contenedor → automatización</span>.
+          <span class="highlight">desarrollo → versionado → contenedor → automatización → despliegue</span>.
         </p>
       </div>
     </section>
@@ -172,5 +193,16 @@
   <footer>
     Hecho por Oscar Terrones | Mi primer laboratorio DevOps
   </footer>
+
+  <script>
+    fetch('/api/visits')
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('counter').innerText = data.visits;
+      })
+      .catch(() => {
+        document.getElementById('counter').innerText = 'N/D';
+      });
+  </script>
 </body>
 </html>
