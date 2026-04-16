@@ -142,7 +142,8 @@
       <span class="highlight">GitHub Actions</span>.
     </p>
     <div class="badge">Pipeline Activo ✅</div>
-    <div class="visit-badge">Visitas: <span id="counter">Cargando...</span></div>
+    <div class="visit-badge">Tus visitas: <span id="user-counter">Cargando...</span></div>
+    <div class="visit-badge">Visitas globales: <span id="total-counter">Cargando...</span></div>
   </header>
 
   <main class="container">
@@ -195,14 +196,19 @@
   </footer>
 
   <script>
-    fetch('/api/visits')
-      .then(res => res.json())
-      .then(data => {
-        document.getElementById('counter').innerText = data.visits;
-      })
-      .catch(() => {
-        document.getElementById('counter').innerText = 'N/D';
-      });
+   <script>
+  fetch('/api/visits')
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById('user-counter').innerText = data.userVisits;
+      document.getElementById('total-counter').innerText = data.totalVisits;
+      console.log('IP detectada:', data.ip);
+    })
+    .catch(() => {
+      document.getElementById('user-counter').innerText = 'N/D';
+      document.getElementById('total-counter').innerText = 'N/D';
+    });
+</script>
   </script>
 </body>
 </html>
