@@ -4,16 +4,26 @@ const { createClient } = require('redis');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const REDIS_URL = process.env.REDIS_URL;
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+if (!REDIS_URL) {
+  console.error('Falta la variable REDIS_URL');
+  process.exit(1);
+}
 
-const client = createClient({
-  url: REDIS_URL
-});
+const client = createClient({ url: REDIS_URL });
 
 client.on('error', (err) => {
   console.error('Redis error:', err);
 });
+
+function getClientIp(req) {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.socket.remoteAddress || 'unknown';
+}
 
 async function startServer() {
   await client.connect();
@@ -21,37 +31,38 @@ async function startServer() {
   app.use(express.static(path.join(__dirname, 'public')));
 
   app.get('/api/visits', async (req, res) => {
-    const visits = await client.incr('visits');
-    res.json({ visits });
+    const ip = getClientIp(req);
+
+    const totalVisits = await client.incr('visits:total');
+    const userVisits = await client.incr(`visits:user:${ip}`);
+
+    res.json({
+      totalVisits,
+      userVisits,
+      ip
+    });
   });
 
   app.get('/health', async (req, res) => {
-    let redisStatus = 'unknown';
-
     try {
       await client.ping();
-      redisStatus = 'ok';
-    } catch (error) {
-      redisStatus = 'error';
+      res.json({ status: 'ok', redis: 'ok' });
+    } catch {
+      res.status(500).json({ status: 'error', redis: 'down' });
     }
-
-    res.json({
-      status: 'ok',
-      redis: redisStatus
-    });
   });
 
   app.get('/version', (req, res) => {
     res.json({
       app: 'mi-primer-proyecto-devops',
-      version: '2.0.0',
-      storage: 'redis'
+      version: '3.0.0',
+      storage: 'redis',
+      feature: 'visitas por usuario'
     });
   });
 
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
-    console.log(`Connected to Redis at ${REDIS_URL}`);
   });
 }
 
