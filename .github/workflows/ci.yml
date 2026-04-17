@@ -1,0 +1,59 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check server syntax
+        run: node --check server.js
+
+      - name: Start Redis container
+        run: docker run -d --name redis-test -p 6379:6379 redis
+
+      - name: Wait for Redis
+        run: |
+          for i in {1..10}; do
+            docker exec redis-test redis-cli ping && exit 0
+            sleep 2
+          done
+          echo "Redis did not become ready in time"
+          exit 1
+
+      - name: Start application
+        env:
+          REDIS_URL: redis://localhost:6379
+          PORT: 3000
+        run: |
+          npm start &
+          sleep 10
+
+      - name: Test health endpoint
+        run: curl --fail http://localhost:3000/health
+
+      - name: Test metrics endpoint
+        run: curl --fail http://localhost:3000/metrics
+
+      - name: Test visits endpoint
+        run: curl --fail http://localhost:3000/api/visits
+
+      - name: Build Docker image
+        run: docker build -t oscar-devops-lab .
