@@ -7,6 +7,12 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const REDIS_URL = process.env.REDIS_URL;
 
+const metrics = {
+  totalRequests: 0,
+  totalErrors: 0,
+  startTime: Date.now()
+};
+
 if (!REDIS_URL) {
   console.error('Falta la variable REDIS_URL');
   process.exit(1);
@@ -30,6 +36,19 @@ async function startServer() {
   await client.connect();
 
   app.use(morgan('combined'));
+
+  app.use((req, res, next) => {
+    metrics.totalRequests++;
+
+    res.on('finish', () => {
+      if (res.statusCode >= 400) {
+        metrics.totalErrors++;
+      }
+    });
+
+    next();
+  });
+
   app.use(express.static(path.join(__dirname, 'public')));
 
   app.get('/api/visits', async (req, res) => {
@@ -80,13 +99,29 @@ async function startServer() {
     }
   });
 
+  app.get('/metrics', (req, res) => {
+    res.json({
+      uptimeSeconds: Math.floor((Date.now() - metrics.startTime) / 1000),
+      totalRequests: metrics.totalRequests,
+      totalErrors: metrics.totalErrors,
+      successRate:
+        metrics.totalRequests > 0
+          ? (
+              (metrics.totalRequests - metrics.totalErrors) /
+              metrics.totalRequests
+            ).toFixed(4)
+          : '1.0000'
+    });
+  });
+
   app.get('/version', (req, res) => {
     res.json({
       app: 'mi-primer-proyecto-devops',
-      version: '3.1.0',
+      version: '3.2.0',
       storage: 'redis',
       feature: 'visitas por usuario',
-      logging: 'morgan'
+      logging: 'morgan',
+      metrics: 'enabled'
     });
   });
 
