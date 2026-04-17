@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const morgan = require('morgan');
 const { createClient } = require('redis');
 
 const app = express();
@@ -28,13 +29,26 @@ function getClientIp(req) {
 async function startServer() {
   await client.connect();
 
+  app.use(morgan('combined'));
   app.use(express.static(path.join(__dirname, 'public')));
 
   app.get('/api/visits', async (req, res) => {
     const ip = getClientIp(req);
 
-    const totalVisits = await client.incr('visits:total');
-    const userVisits = await client.incr(`visits:user:${ip}`);
+    let totalVisits = 0;
+    let userVisits = 0;
+
+    try {
+      totalVisits = await client.incr('visits:total');
+      userVisits = await client.incr(`visits:user:${ip}`);
+    } catch (error) {
+      console.error('Redis increment error:', error);
+      return res.status(500).json({
+        status: 'error',
+        message: 'No se pudieron actualizar las visitas',
+        ip
+      });
+    }
 
     res.json({
       totalVisits,
@@ -44,20 +58,35 @@ async function startServer() {
   });
 
   app.get('/health', async (req, res) => {
+    const start = Date.now();
+
     try {
       await client.ping();
-      res.json({ status: 'ok', redis: 'ok' });
-    } catch {
-      res.status(500).json({ status: 'error', redis: 'down' });
+
+      res.json({
+        status: 'ok',
+        redis: 'ok',
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString(),
+        responseTimeMs: Date.now() - start
+      });
+    } catch (error) {
+      res.status(500).json({
+        status: 'error',
+        redis: 'down',
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
     }
   });
 
   app.get('/version', (req, res) => {
     res.json({
       app: 'mi-primer-proyecto-devops',
-      version: '3.0.0',
+      version: '3.1.0',
       storage: 'redis',
-      feature: 'visitas por usuario'
+      feature: 'visitas por usuario',
+      logging: 'morgan'
     });
   });
 
