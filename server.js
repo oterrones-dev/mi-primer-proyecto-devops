@@ -114,6 +114,27 @@ async function startServer() {
     });
   });
 
+  // 🔥 NUEVO ENDPOINT PROMETHEUS
+  app.get('/metrics-prom', (req, res) => {
+    res.set('Content-Type', 'text/plain');
+
+    const uptime = Math.floor((Date.now() - metrics.startTime) / 1000);
+
+    res.send(`
+# HELP http_requests_total Total number of HTTP requests
+# TYPE http_requests_total counter
+http_requests_total ${metrics.totalRequests}
+
+# HELP http_errors_total Total number of HTTP errors
+# TYPE http_errors_total counter
+http_errors_total ${metrics.totalErrors}
+
+# HELP app_uptime_seconds Application uptime in seconds
+# TYPE app_uptime_seconds gauge
+app_uptime_seconds ${uptime}
+`);
+  });
+
   app.get('/version', (req, res) => {
     res.json({
       app: 'mi-primer-proyecto-devops',
