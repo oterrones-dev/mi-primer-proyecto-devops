@@ -8,6 +8,7 @@
     name="description"
     content="Proyecto DevOps con Node.js, Express, Redis, Docker, Render, GitHub Actions, Prometheus y JWT."
   />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
       --bg: #0b1120;
@@ -423,6 +424,7 @@
       <nav class="nav">
         <a href="#stack">Stack</a>
         <a href="#dashboard">Dashboard</a>
+        <a href="#iot">IoT</a>
         <a href="#auth">JWT</a>
         <a href="#video">Video</a>
         <a href="#arquitectura">Arquitectura</a>
@@ -566,6 +568,47 @@
       </div>
     </section>
 
+    <section class="section" id="iot">
+      <h2 class="section-title">Smart Building Telemetry</h2>
+      <p class="section-subtitle">
+        Dashboard IoT integrado en la app. Muestra energía, agua y accesos usando los datos protegidos de <code>/metrics</code>.
+      </p>
+
+      <div class="dashboard-grid">
+        <div class="dashboard-card">
+          <span class="label">⚡ Energía total</span>
+          <span class="value loading" id="iot-energy">Inicia sesión</span>
+        </div>
+
+        <div class="dashboard-card">
+          <span class="label">🚿 Agua total</span>
+          <span class="value loading" id="iot-water">Inicia sesión</span>
+        </div>
+
+        <div class="dashboard-card">
+          <span class="label">🚪 Accesos</span>
+          <span class="value loading" id="iot-access">Inicia sesión</span>
+        </div>
+      </div>
+
+      <div class="grid-3" style="margin-top: 18px;">
+        <div class="card">
+          <h3>⚡ Energía</h3>
+          <canvas id="energyChart"></canvas>
+        </div>
+
+        <div class="card">
+          <h3>🚿 Agua</h3>
+          <canvas id="waterChart"></canvas>
+        </div>
+
+        <div class="card">
+          <h3>🚪 Accesos</h3>
+          <canvas id="accessChart"></canvas>
+        </div>
+      </div>
+    </section>
+
     <section class="section" id="video">
       <h2 class="section-title">DevOps recomendado</h2>
       <p class="section-subtitle">
@@ -669,6 +712,114 @@
     const output = document.getElementById('output');
     let autoRefreshId = null;
 
+    const chartState = {
+      labels: [],
+      energy: [],
+      water: [],
+      access: []
+    };
+
+    let energyChart;
+    let waterChart;
+    let accessChart;
+
+    function createChart(id, label) {
+      const ctx = document.getElementById(id);
+
+      if (!ctx || typeof Chart === 'undefined') {
+        return null;
+      }
+
+      return new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label,
+            data: [],
+            borderWidth: 2,
+            tension: 0.35
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: {
+              labels: { color: '#e5e7eb' }
+            }
+          },
+          scales: {
+            x: {
+              ticks: { color: '#94a3b8' },
+              grid: { color: 'rgba(148, 163, 184, 0.12)' }
+            },
+            y: {
+              ticks: { color: '#94a3b8' },
+              grid: { color: 'rgba(148, 163, 184, 0.12)' }
+            }
+          }
+        }
+      });
+    }
+
+    function initIotCharts() {
+      if (energyChart) return;
+
+      energyChart = createChart('energyChart', 'kWh');
+      waterChart = createChart('waterChart', 'Liters');
+      accessChart = createChart('accessChart', 'Events');
+    }
+
+    function updateIotDashboard(iot = {}) {
+      initIotCharts();
+
+      const energy = Number(iot.energyKwhTotal || 0);
+      const water = Number(iot.waterLitersTotal || 0);
+      const access = Number(iot.accessEventsTotal || 0);
+
+      document.getElementById('iot-energy').innerText = `${energy.toFixed(2)} kWh`;
+      document.getElementById('iot-water').innerText = `${water.toFixed(2)} L`;
+      document.getElementById('iot-access').innerText = access;
+
+      removeLoading('iot-energy');
+      removeLoading('iot-water');
+      removeLoading('iot-access');
+
+      const now = new Date().toLocaleTimeString();
+
+      chartState.labels.push(now);
+      chartState.energy.push(energy);
+      chartState.water.push(water);
+      chartState.access.push(access);
+
+      if (chartState.labels.length > 20) {
+        chartState.labels.shift();
+        chartState.energy.shift();
+        chartState.water.shift();
+        chartState.access.shift();
+      }
+
+      if (energyChart) {
+        energyChart.data.labels = chartState.labels;
+        energyChart.data.datasets[0].data = chartState.energy;
+        energyChart.update();
+      }
+
+      if (waterChart) {
+        waterChart.data.labels = chartState.labels;
+        waterChart.data.datasets[0].data = chartState.water;
+        waterChart.update();
+      }
+
+      if (accessChart) {
+        accessChart.data.labels = chartState.labels;
+        accessChart.data.datasets[0].data = chartState.access;
+        accessChart.update();
+      }
+    }
+
+
     function removeLoading(id) {
       document.getElementById(id).classList.remove('loading');
     }
@@ -746,6 +897,9 @@
       document.getElementById('login-success').innerText = 'Inicia sesión';
       document.getElementById('login-failures').innerText = 'Inicia sesión';
       document.getElementById('success-rate').style.color = 'white';
+      document.getElementById('iot-energy').innerText = 'Inicia sesión';
+      document.getElementById('iot-water').innerText = 'Inicia sesión';
+      document.getElementById('iot-access').innerText = 'Inicia sesión';
     }
 
     function startAutoRefresh() {
@@ -881,6 +1035,7 @@
         document.getElementById('login-failures').innerText = data.loginFailures ?? 'N/D';
 
         updateSuccessRateColor(data.successRate);
+        updateIotDashboard(data.iot);
 
         removeLoading('uptime');
         removeLoading('requests');
@@ -945,7 +1100,10 @@
         'errors',
         'success-rate',
         'login-success',
-        'login-failures'
+        'login-failures',
+        'iot-energy',
+        'iot-water',
+        'iot-access'
       ].forEach(removeLoading);
 
       if (getToken()) {
