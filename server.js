@@ -16,14 +16,7 @@ const metrics = {
   totalErrors: 0,
   loginSuccess: 0,
   loginFailures: 0,
-  startTime: Date.now(),
-
-  iot: {
-    energyKwhTotal: 0,
-    waterLitersTotal: 0,
-    accessEventsTotal: 0,
-    lastReading: null
-  }
+  startTime: Date.now()
 };
 
 if (!REDIS_URL) {
@@ -62,15 +55,6 @@ app.use((req, res, next) => {
 
   next();
 });
-
-function getClientIp(req) {
-  const forwarded = req.headers['x-forwarded-for'];
-  if (forwarded) {
-    return forwarded.split(',')[0].trim();
-  }
-
-  return req.socket.remoteAddress || 'unknown';
-}
 
 function authenticateToken(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -112,159 +96,120 @@ app.post('/login', async (req, res) => {
     }
 
     const token = jwt.sign(
-      {
-        username,
-        role: 'admin'
-      },
+      { username, role: 'admin' },
       process.env.JWT_SECRET,
-      {
-        expiresIn: '1h'
-      }
+      { expiresIn: '1h' }
     );
 
     metrics.loginSuccess++;
 
-    res.json({
-      message: 'Login exitoso',
-      token
-    });
+    res.json({ message: 'Login exitoso', token });
   } catch (error) {
     console.error('Login error:', error);
-    metrics.loginFailures++;
-
-    res.status(500).json({
-      error: 'Error interno en login'
-    });
+    res.status(500).json({ error: 'Error interno en login' });
   }
 });
 
-app.post('/api/iot/reading', authenticateToken, (req, res) => {
-  const { deviceId, type, value, unit } = req.body;
 
-  if (!deviceId || !type || typeof value !== 'number') {
-    return res.status(400).json({
-      status: 'error',
-      message: 'deviceId, type and numeric value are required'
-    });
-  }
-
-  const allowedTypes = ['energy', 'water', 'access'];
-
-  if (!allowedTypes.includes(type)) {
-    return res.status(400).json({
-      status: 'error',
-      message: 'type must be one of: energy, water, access'
-    });
-  }
-
-  const reading = {
-    deviceId,
-    type,
-    value,
-    unit: unit || null,
-    timestamp: new Date().toISOString()
-  };
-
-  if (type === 'energy') {
-    metrics.iot.energyKwhTotal += value;
-  }
-
-  if (type === 'water') {
-    metrics.iot.waterLitersTotal += value;
-  }
-
-  if (type === 'access') {
-    metrics.iot.accessEventsTotal += value;
-  }
-
-  metrics.iot.lastReading = reading;
-
-  res.json({
-    status: 'ok',
-    reading,
-    totals: metrics.iot
-  });
-});
-
-app.get('/api/visits', authenticateToken, async (req, res) => {
-  const ip = getClientIp(req);
-
-  let totalVisits = 0;
-  let userVisits = 0;
-
+// 🔥 ENDPOINT IoT (CORREGIDO - SOLO ESTE)
+app.post('/api/iot/reading', authenticateToken, async (req, res) => {
   try {
-    totalVisits = await client.incr('visits:total');
-    userVisits = await client.incr(`visits:user:${req.user.username}`);
-  } catch (error) {
-    console.error('Redis increment error:', error);
+    const { deviceId, type, value } = req.body;
 
-    return res.status(500).json({
-      status: 'error',
-      message: 'No se pudieron actualizar las visitas',
-      ip
-    });
-  }
+    if (!deviceId || !type || typeof value !== 'number') {
+      return res.status(400).json({
+        status: 'error',
+        message: 'deviceId, type and numeric value are required'
+      });
+    }
 
-  res.json({
-    totalVisits,
-    userVisits,
-    ip,
-    user: req.user.username
-  });
-});
+    const allowedTypes = ['energy', 'water', 'access'];
 
-app.get('/health', async (req, res) => {
-  const start = Date.now();
+    if (!allowedTypes.includes(type)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'type must be one of: energy, water, access'
+      });
+    }
 
-  try {
-    await client.ping();
+    // 🔥 Guardar en Redis
+    if (type === 'energy') {
+      await client.incrByFloat('iot:energyKwhTotal', value);
+    }
+
+    if (type === 'water') {
+      await client.incrByFloat('iot:waterLitersTotal', value);
+    }
+
+    if (type === 'access') {
+      await client.incrBy('iot:accessEventsTotal', value);
+    }
+
+    const reading = {
+      deviceId,
+      type,
+      value,
+      timestamp: new Date().toISOString()
+    };
+
+    await client.set('iot:lastReading', JSON.stringify(reading));
 
     res.json({
       status: 'ok',
-      redis: 'ok',
-      uptime: process.uptime(),
-      timestamp: new Date().toISOString(),
-      responseTimeMs: Date.now() - start
+      reading
     });
+
   } catch (error) {
-    res.status(500).json({
-      status: 'error',
-      redis: 'down',
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
+    console.error('IoT error:', error);
+    res.status(500).json({ error: 'Error procesando lectura IoT' });
   }
 });
 
-app.get('/metrics', authenticateToken, (req, res) => {
+
+// 🔥 METRICS (ahora desde Redis)
+app.get('/metrics', authenticateToken, async (req, res) => {
+  const energy = Number(await client.get('iot:energyKwhTotal') || 0);
+  const water = Number(await client.get('iot:waterLitersTotal') || 0);
+  const access = Number(await client.get('iot:accessEventsTotal') || 0);
+
   res.json({
     uptimeSeconds: Math.floor((Date.now() - metrics.startTime) / 1000),
     totalRequests: metrics.totalRequests,
     totalErrors: metrics.totalErrors,
     loginSuccess: metrics.loginSuccess,
     loginFailures: metrics.loginFailures,
-    iot: metrics.iot,
-    successRate:
-      metrics.totalRequests > 0
-        ? (
-            (metrics.totalRequests - metrics.totalErrors) /
-            metrics.totalRequests
-          ).toFixed(4)
-        : '1.0000'
+    iot: {
+      energyKwhTotal: energy,
+      waterLitersTotal: water,
+      accessEventsTotal: access
+    }
   });
 });
 
-app.get('/metrics-prom', (req, res) => {
+
+// 🔥 PROMETHEUS (desde Redis)
+app.get('/metrics-prom', async (req, res) => {
   const uptimeSeconds = Math.floor((Date.now() - metrics.startTime) / 1000);
 
-  const successRate =
-    metrics.totalRequests > 0
-      ? (metrics.totalRequests - metrics.totalErrors) / metrics.totalRequests
-      : 1;
+  const energy = Number(await client.get('iot:energyKwhTotal') || 0);
+  const water = Number(await client.get('iot:waterLitersTotal') || 0);
+  const access = Number(await client.get('iot:accessEventsTotal') || 0);
 
   res.set('Content-Type', 'text/plain');
 
   res.send(`
+# HELP iot_energy_kwh_total Total energy consumption
+# TYPE iot_energy_kwh_total counter
+iot_energy_kwh_total ${energy}
+
+# HELP iot_water_liters_total Total water usage
+# TYPE iot_water_liters_total counter
+iot_water_liters_total ${water}
+
+# HELP iot_access_events_total Total access events
+# TYPE iot_access_events_total counter
+iot_access_events_total ${access}
+
 # HELP http_requests_total Total HTTP requests
 # TYPE http_requests_total counter
 http_requests_total ${metrics.totalRequests}
@@ -273,46 +218,26 @@ http_requests_total ${metrics.totalRequests}
 # TYPE http_errors_total counter
 http_errors_total ${metrics.totalErrors}
 
-# HELP app_uptime_seconds Application uptime in seconds
+# HELP app_uptime_seconds Application uptime
 # TYPE app_uptime_seconds gauge
 app_uptime_seconds ${uptimeSeconds}
-
-# HELP app_success_rate Success rate of requests
-# TYPE app_success_rate gauge
-app_success_rate ${successRate}
-
-# HELP auth_login_success_total Successful logins
-# TYPE auth_login_success_total counter
-auth_login_success_total ${metrics.loginSuccess}
-
-# HELP auth_login_failures_total Failed logins
-# TYPE auth_login_failures_total counter
-auth_login_failures_total ${metrics.loginFailures}
-
-# HELP iot_energy_kwh_total Total simulated energy consumption in kWh
-# TYPE iot_energy_kwh_total counter
-iot_energy_kwh_total ${metrics.iot.energyKwhTotal}
-
-# HELP iot_water_liters_total Total simulated water usage in liters
-# TYPE iot_water_liters_total counter
-iot_water_liters_total ${metrics.iot.waterLitersTotal}
-
-# HELP iot_access_events_total Total simulated access events
-# TYPE iot_access_events_total counter
-iot_access_events_total ${metrics.iot.accessEventsTotal}
 `.trim() + '\n');
 });
 
-app.get('/version', authenticateToken, (req, res) => {
-  res.json({
-    app: 'mi-primer-proyecto-devops',
-    version: '4.1.0',
-    storage: 'redis',
-    feature: 'visitas por usuario con JWT + IoT telemetry',
-    logging: 'morgan',
-    metrics: 'enabled',
-    iotTelemetry: 'enabled'
-  });
+app.get('/health', async (req, res) => {
+  try {
+    await client.ping();
+
+    res.json({
+      status: 'ok',
+      redis: 'ok'
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      redis: 'down'
+    });
+  }
 });
 
 async function startServer() {
@@ -323,7 +248,4 @@ async function startServer() {
   });
 }
 
-startServer().catch((err) => {
-  console.error('Failed to start server:', err);
-  process.exit(1);
-});
+startServer();

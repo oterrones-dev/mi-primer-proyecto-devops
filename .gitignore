@@ -1,2 +1,17 @@
 node_modules
 .env
+
+# Variables de entorno y credenciales
+.env
+.env.*
+
+/backups/
+
+# Respaldos locales
+*.bak
+*.bak.*
+*.backup
+*.pre-*
+
+# Plantilla pública sin credenciales
+!.env.example

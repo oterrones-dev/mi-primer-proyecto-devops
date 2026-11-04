@@ -1,22 +1,22 @@
 FROM node:20-alpine
 
-# Crear directorio de trabajo
+# Imagen base
+FROM node:18-alpine
+
+# Directorio de trabajo
 WORKDIR /app
 
-# Copiar package.json y lock para instalaciones más consistentes
+# Copiar package.json
 COPY package*.json ./
 
-# Instalar dependencias en modo producción
-RUN npm install --omit=dev
+# Instalar dependencias
+RUN npm install
 
-# Copiar el resto del código
+# Copiar código
 COPY . .
 
 # Exponer puerto
 EXPOSE 3000
 
-# Variables recomendadas
-ENV NODE_ENV=production
-
-# Comando de arranque
+# Comando de inicio
 CMD ["npm", "start"]

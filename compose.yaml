@@ -1,0 +1,77 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:3000/metrics-prom').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  redis:
+    image: redis:8.6.2
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+
+  simulator:
+    build: .
+    command: node simulator.js
+    env_file:
+      - .env
+    environment:
+      IOT_TARGET_URL: http://app:3000
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+    external: true
+    name: mi-app_redis-data
+
+  prometheus-data:
+    external: true
+    name: 09fc09a3c0495ce0dd1ecef2dc31d205c5f5898bc165f245c651c57371e6917f
+
+  grafana-storage:
+    external: true
